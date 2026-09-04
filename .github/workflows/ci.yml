@@ -1,0 +1,50 @@
+name: ci
+
+# Thin caller: the logic lives in the factory, at the release pinned below.
+#
+# The pin is the point. This repository keeps running that exact release until
+# somebody bumps the line and merges it - a new release in the factory changes
+# nothing here on its own. `/update-agents` proposes the bump as a pull
+# request, so the diff gets read here before it runs here.
+#
+# ---------------------------------------------------------------------------
+# Why this caller is on the `commands` path and not the Node path
+#
+# There is no application code here yet, and no stack has been chosen. The
+# reusable workflow's Node path fails a named `package.json` script that is not
+# there rather than skipping it, which is correct and which would make every
+# pull request in this repository red before the first line of product code is
+# written - including the agent pull requests this repository exists to try
+# out, once branch protection is on.
+#
+# So the gate checks the only thing that is actually true right now: that the
+# scaffolding a session and an agent run both read is intact. It is a real
+# check with a real failure mode - delete `.claude/agents/` and it goes red -
+# and it is honest about being a placeholder for a real one.
+#
+# When a stack lands, delete the `check-name` and `commands` inputs and restore
+# the two lines kept below. Do it in the same commit that adds the scripts, and
+# re-point the branch protection rule in the same sitting: the job name is the
+# string protection matches on, so changing it leaves a required check that
+# never reports and blocks every merge.
+#
+#     with:
+#       node-version: '20'
+#       checks: 'typecheck,lint,test,build'
+# ---------------------------------------------------------------------------
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    uses: chamaya00/agent-factory/.github/workflows/ci.yml@v1.6.0
+    with:
+      check-name: 'scaffolding'
+      commands: |
+        test -f CLAUDE.md
+        test -f .claude/agent-factory.json
+        test -d .claude/agents && test -d .claude/skills && test -d .claude/commands
+        test -d docs/research && test -d docs/design && test -d docs/decisions
